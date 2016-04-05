@@ -6,11 +6,8 @@
   :comment "This is the manual developed ontology")
 ;; Main class in the ontology
 (defclass CellName)
-
 (defclass GroupName)
-
 (defclass CellType)
-
 (defclass CellOrigin)
 
 (defoproperty fromGroup)

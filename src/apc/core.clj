@@ -22,23 +22,68 @@
 ;;remove nils from the table1
 (def final-table1 (remove-nil table1))
 
+;; define ontology and its classess and properties
+(defontology apc
+  :comment "This is the manual developed ontology"
+  :iri "http://www.ncl.ac.uk/apc")
+  
+(defclass CellName)
+(defclass CellOrigin)
+(defclass CellType)
+(defclass GroupName)
+
+(defoproperty hasType :domain CellType)
+(defoproperty hasLocation)
+(defoproperty fromGroup :domain GroupName)
+(defoproperty hasOrigin :range CellOrigin)
+
+(defclass Autologous :super CellOrigin)
+(defclass Allogeneic :super CellOrigin :disjoint Autologous)
+(defpartition CellOrigin
+  [Allogeneic Autologous]
+  :super CellName)
+
+
 ;;save all properties in one list
-(def properties (distinct (filter (comp not nil?) (map :property final-table1))))
+(def properties (distinct (filter (comp not nil?)
+                                  (map :property final-table1))))
 
 ;;define groups from the table
 ;(def groups (distinct (filter (comp not nil?) (map {:property "Group"} final-table1))))
-(def groups (if (= (:property (final-table1 2)) "Group") (vals (final-table1 2))))
+(def groups (if (= (:property (final-table1 2)) "Group")
+              (vals (final-table1 2))))
 ;(remove "Group" groups)
 ;;define groups' names
-(def names (if (= (:property (final-table1 1)) nil) (vals (final-table1 1))))
+(def names (if (= (:property (final-table1 1)) nil)
+             (vals (final-table1 1))))
 ;; add the rest of the groups' names from the second part of the table
 ;(conj names (vals (final-table1 15)))
 (def names2 (into names (vals (final-table1 15))))
 
-
-(defn group
-  "save each group as individual object using the list of groups' name "
-  [n]
-  (individual n))
-
+;; this to create individuals of groups
+(defn group [group-name]
+  ;; group-name in B4
+  (individual group-name
+              :type GroupName))
+(map group groups) ; test the function
 (def g (map group groups))
+;; this to create individuals of cell names
+(defn cell-name [name]
+  (individual name
+              :type CellName))
+(map cell-name names) ;test function
+(def c (map cell-name names)) ; save cell names in seq
+;; create cell line with all info
+(defn cell-line [cell-name group]
+  (individual cell-name
+              :type CellName
+              :fact (is fromGroup group)))
+
+;; save all cell lines in one place
+(def lines
+  (map cell-line c g))
+
+(map defindividual lines)
+(def classes (map owl-class groups))
+(reasoner-factory :hermit)
+

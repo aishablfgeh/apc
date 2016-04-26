@@ -6,42 +6,78 @@
         [dk.ative.docjure.spreadsheet])
   (:require [clojure.string :as str]))
 
-;; 
+;; The ontology and classes
 (defontology apc1
-  :comment "This is the manual developed ontology")
-(defclass GroupName)
-(defclass CellName)
-(defclass CellType)
-(defclass CellOrigin)
+  :comment "This is the ontology for APC catalogue")
 
-(defoproperty fromGroup)
-(defoproperty hasType)
-(defoproperty hasType :domain CellType)
-(defoproperty hasLocation)
+(defclass CellName
+  :comment "Cell line name")
+(defclass GroupName
+  :comment "The name of group")
+(defclass Location
+  :comment "Location")
+(defclass ClinicalDisease
+  :comment "Clinical disease name")
+(defclass Status
+  :comment "Status of the.. ")
+(defclass Species
+  :comment "Species")
+(defclass CellType
+  :comment "Cell type")
+(defclass Description
+  :comment "Description")
+(defclass Activation
+  :comment "Activation")
+(defclass AntigenLoad
+  :comment "Antigen loading")
+(defclass CellOrigin
+  :comment "Origin of the cell")
+(defclass StartMaterial
+  :comment "Starting material")
+(defclass Isolation
+  :comment "Isolation")
+
+
+(as-subclasses
+ Species
+ :disjoint
+ (defclass Human)
+ (defclass Mouse)
+ (defclass Rat))
+
+(as-subclasses
+ StartMaterial
+ :disjoint
+ (defclass Leukapheresis)
+ (defclass BoneMarrow)
+ (defclass PB))
+
+;; Properties
 (defoproperty fromGroup :domain GroupName)
+(defoproperty hasType :domain CellType)
+(defoproperty hasLocation :domain Location)
+(defoproperty hasStatus :domain Status)
+(defoproperty itsOrigin :domain CellOrigin)
 
-(defclass Autologous :super CellOrigin)
-(defclass Allogeneic :super CellOrigin :disjoint Autologous)
 (defpartition CellOrigin
-  [Allogeneic Autologous]
-  :super CellName)
+  [Allogeneic Autologous])
 
-(refine Allogeneic :comment "Allogeneic is a word I don't know")
+(refine Allogeneic :comment "Allogeneic is a cell from a donor blood")
+(refine Autologous :comment "Autologous is a cell from a patient own blood")
 
 ;; save workbook in a variable and sheet1
 (def workbook (load-workbook "APC catalogue v5.xlsx"))
 (def sheet (select-sheet "Table 1" workbook))
-;; define the first cell line column in one variable
-(def cell-line1 (select-columns {:B :line1} sheet))
 
-(def sheet-test (cell-seq sheet)) ;save lazyseq of all cells in a sheet
 
 ;; this function extract row information into a lazy sequence of strings
 ;; also removes spaces and first value of the row
-
 ;; row-to-blank
-
 (defn row-info
+  "Given sheet and row number.
+  It returns all information of that row as a lazy sequence
+  S - is the sheet name.
+  ROW - is the number of row to be extracted."
   [s row]
   (doall
    (map clojure.string/trim
@@ -53,29 +89,63 @@
                              (drop row
                                    (row-seq s))))))))))
 
-;; Those are the rows of individuals
-(def cell-nm
-  "The names of the cell lines."
-  (concat (row-info sheet 1) (row-info sheet 15))) ;
+;; Those are the rows of the sheet  as individuals
+(def cell-lines
+  "The cell lines."
+  (concat (row-info sheet 1) (row-info sheet 15)))
 
-(def groups (concat (row-info sheet 2) (row-info sheet 16)))
-(def cl-ds (concat (row-info sheet 4) (row-info sheet 18)))
-(def species (concat (row-info sheet 6) (row-info sheet 20))) ; partition
-(def cell-tp (concat (row-info sheet 7) (row-info sheet 21)))
-(def ant-ld (concat (row-info sheet 10) (row-info sheet 24)))
-(def cell-org (concat (row-info sheet 11) (row-info sheet 25))); partition
-(def st-mtr (concat (row-info sheet 12) (row-info sheet 26))) ; partition
-(def isol (concat (row-info sheet 13) (row-info sheet 27)))
+(def groups
+  "The name of groups."
+  (concat (row-info sheet 2) (row-info sheet 16)))
+
+(def clinical-disease
+  "Clinical disease"
+  (concat (row-info sheet 4) (row-info sheet 18)))
+
+(def species
+  "Species"
+  (concat (row-info sheet 6) (row-info sheet 20))) ; partition
+
+(def cell-type
+  "Cell Type"
+  (concat (row-info sheet 7) (row-info sheet 21)))
+
+(def antigen-loading
+  "Antigen loading"
+  (concat (row-info sheet 10) (row-info sheet 24)))
+
+(def cell-origin
+  "Cell origin"
+  (concat (row-info sheet 11) (row-info sheet 25))); partition
+
+(def starting-material
+  "Starting material"
+  (concat (row-info sheet 12) (row-info sheet 26))) ; partition
+
+(def isolation
+  "Isolation"
+  (concat (row-info sheet 13) (row-info sheet 27)))
 
 ;;rows to be properties in the ontology
-(def loc (concat (row-info sheet 3) (row-info sheet 17)))
-(def status (concat (row-info sheet 5) (row-info sheet 19)))
-(def desc (concat (row-info sheet 8) (row-info sheet 22)))
-(def act (concat (row-info sheet 9) (row-info sheet 23)))
+(def loc
+  "Location"
+  (concat (row-info sheet 3) (row-info sheet 17)))
+
+(def status
+  "Status"
+  (concat (row-info sheet 5) (row-info sheet 19)))
+
+(def description
+  "Description"
+  (concat (row-info sheet 8) (row-info sheet 22)))
+
+(def activation
+  "Activation"
+  (concat (row-info sheet 9) (row-info sheet 23)))
 
 ;; define individual of each string in the sequence
 (defn individual-with-type
-  "Given something and something else return something.
+  "Given indivdual names and type return individuals with thier type.
 
   I-NAME is the individual name.
   I-TYPE is the type of the individual"
@@ -86,10 +156,13 @@
   (doall (map #(individual-with-type % GroupName) groups)))
 ;; this to create individuals of cell names
 (def cell-name-test
-  (doall (map #(individual-with-type % CellName) cell-nm)))
+  (doall (map #(individual-with-type % CellName) cell-lines)))
 
 ;; create cell line with all info
 (defn cell-line [cell-name group]
+  "List the lines with all information
+   CELL-NAME  cell lines as a seq
+   GROUP  groups' names as a seq"
   (individual cell-name
               :type CellName
               :fact (is fromGroup group)))
@@ -97,19 +170,20 @@
 ;; save all cell lines in one place
 (def lines
   (doall
-   (map cell-line cn gr)))
+   (map cell-line cell-name-test group-test)))
 
 ;; this suppose to define cell origins available in the sheet
 ;; as individuals
-(def cell-origins
-  (individual
-    (doall
-     (map
-      #({"Autologous" Autologous
-         "Allogeneic" Allogeneic} %)
-      cell-org))))
-
-(defindividual ATDC (first lines))
+;; (def cell-origins
+;;   "Given the row of cell origin and return individuals of origins
+;;    Autologous/Allogeneic needs to be considered"
+;;   (individual
+;;     (doall
+;;      (map 
+;;       #({"Autologous" Autologous
+;;          "Allogeneic" Allogeneic
+;;          "Autologous/Allogeneic" (owl-or Autologous Allogeneic)} %)
+;;       cell-origin))))
 
 (save-ontology "apc1.owl" :owl)
 (save-ontology "apc1.omn" :omn)

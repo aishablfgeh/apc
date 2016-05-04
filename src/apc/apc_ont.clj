@@ -309,12 +309,10 @@ A list of strings of the names of the cell lines."
 (def lines
   (doall
    (map #(do
-           ;(doall (map println "\t:" %&))
            (apply cell-line %&))
         cell-lines-name groups-names locations
         clinical-diseases current-status species-name cell-types descriptions
         activ antigen-load c-origin start-materials isolations)))
 
-(save-ontology "apc.owl" :owl)
 (save-ontology "apc.omn" :omn)
 (reasoner-factory :hermit)

@@ -12,9 +12,9 @@
   :iri "http://example.com")
 
 ;; classes
-(defclass CellName
+(defclass CellLine
   :comment "Cell line name"
-  :annotation (label "Cell Name"))
+  :annotation (label "Cell Line"))
 
 (defclass GroupName
   :comment "The name of group"
@@ -114,25 +114,24 @@
   S -   is the excel sheet name.
   ROW - is the number of row to be extracted."
   [s row]
-  (doall
-   (map clojure.string/trim
-        (remove nil?
-                (rest
-                 (map read-cell
-                      (cell-seq
-                       (take 1
-                             (drop row
-                                   (row-seq s))))))))))
+  (map #(and %
+         clojure.string/trim %)
+       (rest
+        (map read-cell
+             (cell-seq
+              (take 1
+                    (drop row
+                          (row-seq s))))))))
 
 ;; Those are the rows of the sheet  as individuals
 (def groups
   "The name of groups.
-A list of strings of the groups' names."
+  A list of strings of the groups' names."
   (concat (drop-last(row-info sheet 2)) (row-info sheet 16)))
 
 (def cell-lines
   "The cell lines.
-A list of strings of the names of the cell lines."
+  A list of strings of the names of the cell lines."
   (map
    (fn [line-name group-name]
      (str line-name "-" group-name))
@@ -190,7 +189,10 @@ A list of strings of the names of the cell lines."
   I-NAME is the individual name.
   I-TYPE is the type of the individual"
   [i-name i-type]
-  (individual i-name :type i-type))
+  ;;(println "i-name:" i-name " :i-type:" i-type)
+  (p individual i-name
+            :type i-type)
+  )
 
 ;; create individuals of groups
 (def groups-names
@@ -200,7 +202,7 @@ A list of strings of the names of the cell lines."
 ;; create individuals of cell line  names
 (def cell-lines-name
   "A list of individuals from the string list of cell lines"
-  (map #(individual-with-type % CellName) cell-lines))
+  (map #(individual-with-type % CellLine) cell-lines))
 
 ;; create individuals of locations
 (def locations
@@ -290,20 +292,20 @@ A list of strings of the names of the cell lines."
    CELL-ORG         cell origin
    START-MATERIAL   starting material
    ISOL             isolation"
-  (individual cell-name
+  (p individual cell-name
           ;:type cell-org
           :fact (is fromGroup group)
-          :fact (is hasLocation loc)
-          :fact (is fromClinicalDisease clinic-disease)
-          :fact (is fromSpecies from-species)
-          :fact (is hasStatus stat)
-          :fact (is hasType c-type)
-          :fact (is hasDescription desc)
-          :fact (is hasActivation active)
-          :fact (is hasAntigenLoad anti-load)
-          :fact (is itsOrigin cell-org)
-          :fact (is withStartMaterial start-material)
-          :fact (is hasIsolation isol)))
+                (is hasLocation loc)
+                (is fromClinicalDisease clinic-disease)
+                (is fromSpecies from-species)
+                (is hasStatus stat)
+                (is hasType c-type)
+                (is hasDescription desc)
+                (is hasActivation active)
+                (is hasAntigenLoad anti-load)
+                (is itsOrigin cell-org)
+                (is withStartMaterial start-material)
+                (is hasIsolation isol)))
 
 ;; save all cell lines in one place
 (def lines

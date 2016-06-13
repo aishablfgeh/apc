@@ -4,7 +4,9 @@
         [tawny.repl]
         [tawny.reasoner]
         [dk.ative.docjure.spreadsheet])
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [tawny.protocol :as p])
+  (:import [java.net URLEncoder]))
 
 ;; The ontology
 (defontology apc
@@ -115,7 +117,9 @@
   ROW - is the number of row to be extracted."
   [s row]
   (map #(and %
-         clojure.string/trim %)
+             (clojure.string/replace (clojure.string/trim %) #"\s+" "-")
+         ;clojure.string/trim %
+             )
        (rest
         (map read-cell
              (cell-seq
@@ -127,11 +131,12 @@
 (def groups
   "The name of groups.
   A list of strings of the groups' names."
-  (concat (drop-last(row-info sheet 2)) (row-info sheet 16)))
+  (concat (row-info sheet 2) (row-info sheet 16)))
 
 (def cell-lines
   "The cell lines.
-  A list of strings of the names of the cell lines."
+  A list of strings of the names of the cell lines
+  concatenated with group's name."
   (map
    (fn [line-name group-name]
      (str line-name "-" group-name))
@@ -189,10 +194,17 @@
   I-NAME is the individual name.
   I-TYPE is the type of the individual"
   [i-name i-type]
-  ;;(println "i-name:" i-name " :i-type:" i-type)
-  (p individual i-name
-            :type i-type)
-  )
+  ;(println "i-name:" i-name " :i-type:" i-type)
+  (p/as-entity
+   (p individual
+      apc
+      (or
+       (and i-name (URLEncoder/encode i-name))
+       (anonymous-individual))
+      :type i-type
+      :annotation
+      (when i-name
+        (label i-name)))))
 
 ;; create individuals of groups
 (def groups-names
@@ -262,7 +274,7 @@
 ;; as individuals
 (def cell-origins
   "Given the row of cell origin and return individuals of origins
-   Autologous/Allogeneic needs to be considered"
+   Autologous/Allogeneic is or relation"
   (map
    #({"Autologous" Autologous
       "Allogeneic" Allogeneic
@@ -292,7 +304,7 @@
    CELL-ORG         cell origin
    START-MATERIAL   starting material
    ISOL             isolation"
-  (p individual cell-name
+  (individual cell-name
           ;:type cell-org
           :fact (is fromGroup group)
                 (is hasLocation loc)
@@ -311,6 +323,7 @@
 (def lines
   (doall
    (map #(do
+           ;(println %&)
            (apply cell-line %&))
         cell-lines-name groups-names locations
         clinical-diseases current-status species-name cell-types descriptions
